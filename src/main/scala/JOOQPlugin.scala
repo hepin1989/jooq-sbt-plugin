@@ -14,6 +14,8 @@ object JOOQPlugin extends Plugin {
 
   val codegen = TaskKey[Unit]("codegen", "Generates code")
 
+  val cleanCodeGen = TaskKey[Unit]("clean","clean out the generated code")
+
   val multiplyJooqOptions = SettingKey[Map[String,Seq[(String, String)]]]("muliply-jooq-options","multiply jooq options")
 
   val jooqVersion = SettingKey[String]("jooq-version", "JOOQ version.")
@@ -28,6 +30,8 @@ object JOOQPlugin extends Plugin {
 
   val jooqForceGen = SettingKey[Boolean]("jooq-force-gen","force generate file")
 
+  val jooqCleanBeforeGen = SettingKey[Boolean]("jooq-clean-before-gen","clean the generated code before gen")
+
   // exported keys
 
   val jooqSettings = inConfig(JOOQ)(Seq(
@@ -38,14 +42,25 @@ object JOOQPlugin extends Plugin {
       Classpaths.managedJars(JOOQ, ct, u) ++ uj
     },
 
+    cleanCodeGen <<= (streams,jooqOutputDirectory,multiplyJooqOptions) map {
+      case (s,jod,mjo)=>
+        cleanAllGeneratedCode(s.log,jod,mjo)
+    },
+
     codegen <<= (streams,
       baseDirectory,
       managedClasspath in JOOQ,
       jooqOutputDirectory,
       jooqLogLevel,
       jooqConfigFile,
-      multiplyJooqOptions) map {
-      case (s, bd, mcp, jod, jll, jcf,mjo) =>
+      multiplyJooqOptions,
+      jooqCleanBeforeGen) map {
+      case (s, bd, mcp, jod, jll, jcf,mjo,jcbg) =>
+        //should clean the code before?
+        if (jcbg){
+          println("~~~~~~~~~~~~~~clean all generated code")
+          cleanAllGeneratedCode(s.log,jod,mjo)
+        }
         mjo.foreach{
           case (optionName,jo)=>
             println("generating for :"+optionName)
@@ -70,6 +85,8 @@ object JOOQPlugin extends Plugin {
 
     jooqForceGen := true,
 
+    jooqCleanBeforeGen := false,
+
     sourceGenerators in Compile <+= (streams,
       baseDirectory,
       managedClasspath in JOOQ,
@@ -77,12 +94,17 @@ object JOOQPlugin extends Plugin {
       jooqLogLevel,
       jooqConfigFile,
       jooqForceGen,
-      multiplyJooqOptions) map {
-      case (s, bd, mcp, jod,jll, jcf,jforceGen,mjo) =>
+      multiplyJooqOptions,
+      jooqCleanBeforeGen) map {
+      case (s, bd, mcp, jod,jll, jcf,jforceGen,mjo,jcbg) =>
+        val logger = s.log
+        if (jcbg){
+          cleanAllGeneratedCode(logger,jod,mjo)
+        }
         mjo.foldLeft(Seq.empty[File]){
           case (seq,(optionName,jo)) =>
-            println("gathering option for :"+optionName)
-            seq ++ executeJooqCodegenIfOutOfDate(s.log, bd, mcp, jod, jo, jll, jcf,jforceGen)
+            logger.debug("gathering option for :"+optionName)
+            seq ++ executeJooqCodegenIfOutOfDate(logger, bd, mcp, jod, jo, jll, jcf,jforceGen)
         }
     },
 
@@ -102,6 +124,35 @@ object JOOQPlugin extends Plugin {
     ivyConfigurations += JOOQ
 
   )
+
+  private def cleanAllGeneratedCode(logger:Logger,outputDirectory: File,mjo:Map[String,Seq[(String,String)]]):Unit={
+    logger.warn("clean before code gen wil delete all the code in the target location,please insure there is only generate code there.")
+    mjo.foreach{
+      case (optionName,options)=>
+        logger.info(s"deleting for :[$optionName]")
+        options.toMap.get("generator.target.packageName") match {
+          case Some(pkg)=>
+            logger.info(s"target clean package :[$pkg]")
+            val childPath = pkg.replace('.',File.separatorChar)
+            val targetFolder = outputDirectory.getAbsolutePath +"/"+ childPath
+            logger.info(s"clean all generated code here.\ndirectory :[${outputDirectory.getAbsolutePath}]\npackage:[$pkg]\ntargetFolder:[$targetFolder]")
+            //do the delete
+            def delete(file:File): Unit ={
+              if(file.isDirectory){
+                file.listFiles().foreach(delete)
+              }else{
+                file.delete()
+              }
+            }
+            val target = new File(targetFolder)
+            if (target.exists()){
+              delete(target)
+            }
+          case None =>
+            logger.warn("there is no key find for [generator.target.packageName],ignore for safety.")
+        }
+    }
+  }
 
   private def getOrGenerateJooqConfig(log: Logger,
                                       outputDirectory: File,
