@@ -140,6 +140,7 @@ object JOOQPlugin extends Plugin {
             def delete(file:File): Unit ={
               if(file.isDirectory){
                 file.listFiles().foreach(delete)
+                file.delete()
               }else{
                 file.delete()
               }
