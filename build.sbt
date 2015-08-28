@@ -20,28 +20,8 @@ homepage := Some.apply(url("https://github.com/hepin1989/jooq-sbt-plugin"))
 
 licenses := Seq("BSD-style" -> url("http://www.opensource.org/licenses/bsd-license.php"))
 
-publishMavenStyle := true
+publishMavenStyle := false
 
-publishTo := {
-  val nexus = "https://oss.sonatype.org/"
-  if (isSnapshot.value)
-    Some("snapshots" at nexus + "content/repositories/snapshots")
-  else
-    Some("releases" at nexus + "service/local/staging/deploy/maven2")
-}
+bintrayReleaseOnPublish in ThisBuild := false
 
-pomIncludeRepository := {
-  x => false
-}
-
-pomExtra := <scm>
-  <url>https://github.com/hepin1989/jooq-sbt-plugin</url>
-  <connection>scm:git:git@github.com:hepin1989/jooq-sbt-plugin.git</connection>
-</scm>
-  <developers>
-    <developer>
-      <id>hepin1989</id>
-      <name>He Pin</name>
-      <url>https://github.com/hepin1989</url>
-    </developer>
-  </developers>
+bintrayOrganization := None
