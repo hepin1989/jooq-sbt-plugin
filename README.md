@@ -9,9 +9,7 @@ Quick Start
 
 1. Add jooq-sbt-plugin to your `project/plugins.sbt`:
         
-resolvers += "repo" at "https://github.com/hepin1989/release-repo/raw/master"
-
-addSbtPlugin("sean8223" %% "jooq-sbt-plugin" % "1.6.0") // see above
+addSbtPlugin("us.sosia" %% "jooq-sbt-plugin" % "1.6.1") // see above
 		
 2. In your `build.sbt`, do the following:
 
