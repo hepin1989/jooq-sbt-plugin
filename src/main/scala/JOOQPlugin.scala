@@ -71,7 +71,7 @@ object JOOQPlugin extends Plugin {
 
   )) ++ Seq(
 
-    jooqVersion := "3.5.3",
+    jooqVersion := "3.6.2",
 
     sl4jVersion := "1.7.10",
 
